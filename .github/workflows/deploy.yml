@@ -1,26 +1,39 @@
-name: Deploy to Hugging Face Spaces
+name: Deploy to Hugging Face Space
 
 on:
   push:
-    branches: [ main ]   
+    branches:
+      - main  # change if your branch is different
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install Hugging Face Hub client
-        run: pip install huggingface_hub
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
-      - name: Push to Hugging Face Space
+      - name: Install huggingface_hub
+        run: pip install huggingface_hub==0.23.1
+
+      - name: Deploy to HF Space
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}  # your HF access token
         run: |
-          python -m huggingface_hub.commands.upload \
-            --repo-type space \
-            --repo-id Shahida13/text-summarizer \
-            --token $HF_TOKEN \
-            --dir .
+          python -m pip install --upgrade pip
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          hf_space_repo="https://huggingface.co/spaces/username/space-name"
+          huggingface-cli login --token $HF_TOKEN
+          # Push all files to HF Space
+          git clone $hf_space_repo space_temp
+          rsync -av --exclude='.git' ./ space_temp/
+          cd space_temp
+          git add .
+          git commit -m "Update from GitHub"
+          git push
