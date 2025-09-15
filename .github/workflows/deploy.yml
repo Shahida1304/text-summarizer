@@ -1,9 +1,9 @@
-name: Deploy to Hugging Face Space
+name: Deploy to HF Space
 
 on:
   push:
     branches:
-      - main  # deploy when pushing to main branch
+      - main
 
 jobs:
   deploy:
@@ -28,17 +28,20 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python - <<EOF
-          from huggingface_hub import Repository
           import os, shutil
+          from huggingface_hub import Repository
 
-          # HF Space repo URL
           REPO_URL = "https://huggingface.co/spaces/Shahida13/text-summarizer"
           LOCAL_DIR = "hf_space_temp"
 
-          # Clone HF Space repo
+          # Remove folder if exists to prevent errors
+          if os.path.exists(LOCAL_DIR):
+              shutil.rmtree(LOCAL_DIR)
+
+          # Clone HF Space
           repo = Repository(local_dir=LOCAL_DIR, clone_from=REPO_URL, use_auth_token=os.environ["HF_TOKEN"])
 
-          # Copy all files from current repo to Space folder
+          # Copy all files except .git and workflows
           for item in os.listdir("."):
               if item == ".git" or item.startswith(".github"):
                   continue
@@ -49,8 +52,11 @@ jobs:
               else:
                   shutil.copy2(src, dst)
 
-          # Commit and push
+          # Commit & push
           repo.git_add(auto_lfs_track=True)
-          repo.git_commit("Update from GitHub Actions")
+          try:
+              repo.git_commit("Update from GitHub Actions")
+          except:
+              print("Nothing to commit")
           repo.git_push()
           EOF
