@@ -24,7 +24,7 @@ jobs:
           pip install gradio transformers torch huggingface_hub
 
       - name: Deploy to Hugging Face Space
-        uses: huggingface/huggingface_hub@v1
+        uses: nateraw/huggingface-sync-action@v0.0.5
         with:
           repo_type: space
           repo_id: Shahida13/text-summarizer
