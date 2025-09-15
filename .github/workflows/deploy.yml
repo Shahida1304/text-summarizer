@@ -3,7 +3,7 @@ name: Deploy to Hugging Face Space
 on:
   push:
     branches:
-      - main  # change if your branch is different
+      - main  # deploy when pushing to main branch
 
 jobs:
   deploy:
@@ -13,27 +13,44 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      - name: Install huggingface_hub
-        run: pip install huggingface_hub==0.23.1
-
-      - name: Deploy to HF Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}  # your HF access token
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          git config --global user.email "shaikshahida1311@gmail.com"
-          git config --global user.name "Shahida13"
-          hf_space_repo="https://huggingface.co/spaces/username/space-name"
-          huggingface-cli login --token $HF_TOKEN
-          # Push all files to HF Space
-          git clone $hf_space_repo space_temp
-          rsync -av --exclude='.git' ./ space_temp/
-          cd space_temp
-          git add .
-          git commit -m "Update from GitHub"
-          git push
+          pip install --upgrade pip
+          pip install huggingface_hub
+
+      - name: Deploy files to HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<EOF
+          from huggingface_hub import Repository
+          import os, shutil
+
+          # HF Space repo URL
+          REPO_URL = "https://huggingface.co/spaces/Shahida13/text-summarizer"
+          LOCAL_DIR = "hf_space_temp"
+
+          # Clone HF Space repo
+          repo = Repository(local_dir=LOCAL_DIR, clone_from=REPO_URL, use_auth_token=os.environ["HF_TOKEN"])
+
+          # Copy all files from current repo to Space folder
+          for item in os.listdir("."):
+              if item == ".git" or item.startswith(".github"):
+                  continue
+              src = os.path.join(".", item)
+              dst = os.path.join(LOCAL_DIR, item)
+              if os.path.isdir(src):
+                  shutil.copytree(src, dst, dirs_exist_ok=True)
+              else:
+                  shutil.copy2(src, dst)
+
+          # Commit and push
+          repo.git_add(auto_lfs_track=True)
+          repo.git_commit("Update from GitHub Actions")
+          repo.git_push()
+          EOF
