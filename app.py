@@ -2,9 +2,7 @@ import gradio as gr
 from transformers import pipeline
 
 # Load summarization pipeline
-# (First run will download the pretrained model)
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-
 
 # Function to summarize input text
 def summarize_text(text):
@@ -15,16 +13,22 @@ def summarize_text(text):
     summary = summarizer(text, max_length=130, min_length=30, do_sample=False)
     return summary[0]["summary_text"]
 
-
 # Build Gradio interface
 iface = gr.Interface(
     fn=summarize_text,
-    inputs=gr.Textbox(lines=8, placeholder="Paste your long text here..."),
-    outputs="text",
+    inputs=gr.Textbox(
+        lines=15, 
+        placeholder="Paste your long text here..."
+    ),
+    outputs=gr.Textbox(
+        lines=10  
+    ),
     title="Text Summarizer App",
     description="Summarize long passages into concise form using Hugging Face's BART model.",
+    allow_flagging="never"  
 )
 
 if __name__ == "__main__":
-    # launch() with share=True gives public URL (useful for testing)
-    iface.launch()
+    # share=True allows public URL on Hugging Face
+    iface.launch(share=True)
+  
