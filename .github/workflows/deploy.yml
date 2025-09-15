@@ -1,8 +1,9 @@
-name: Deploy to Hugging Face Spaces
+name: Deploy to Hugging Face Space
 
 on:
   push:
-    branches: [ main ]   # or master if your default branch is master
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -12,15 +13,48 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Hugging Face Hub client
-        run: pip install huggingface_hub
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
-      - name: Push to Hugging Face Space
+      - name: Install dependencies
+        run: pip install --upgrade pip huggingface_hub
+
+      - name: Deploy to HF Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python -m huggingface_hub.commands.upload \
-            --repo-type space \
-            --repo-id Shahida13/text-summarizer \
-            --token $HF_TOKEN \
-            --dir .
+          python - <<EOF
+          import os, shutil
+          from huggingface_hub import Repository
+
+          REPO_URL = "https://huggingface.co/spaces/Shahida13/text-summarizer"
+          LOCAL_DIR = "hf_space_temp"
+
+          # Remove folder if exists
+          if os.path.exists(LOCAL_DIR):
+              shutil.rmtree(LOCAL_DIR)
+
+          # Clone empty HF Space
+          repo = Repository(local_dir=LOCAL_DIR, clone_from=REPO_URL, use_auth_token=os.environ["HF_TOKEN"])
+
+          # Copy all files from GitHub repo to Space folder
+          for item in os.listdir("."):
+              if item == ".git" or item.startswith(".github"):
+                  continue
+              src = os.path.join(".", item)
+              dst = os.path.join(LOCAL_DIR, item)
+              if os.path.isdir(src):
+                  shutil.copytree(src, dst, dirs_exist_ok=True)
+              else:
+                  shutil.copy2(src, dst)
+
+          # Commit and push
+          repo.git_add(auto_lfs_track=True)
+          try:
+              repo.git_commit("Initial deploy from GitHub Actions")
+          except:
+              print("Nothing to commit")
+          repo.git_push()
+          EOF
