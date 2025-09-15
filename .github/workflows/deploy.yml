@@ -3,29 +3,48 @@ name: Deploy to Hugging Face Space
 on:
   push:
     branches:
-      - main   # Trigger on push to main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout your GitHub repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Setup Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
+      # Step 3: Install dependencies (needed for app to run)
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install gradio transformers torch huggingface_hub
+          pip install -r requirements.txt
 
+      # Step 4: Deploy via git commands
       - name: Deploy to Hugging Face Space
-        uses: nateraw/huggingface-sync-action@v0.0.5
-        with:
-          repo_type: space
-          repo_id: Shahida13/text-summarizer
-          token: ${{ secrets.HF_TOKEN }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -e  # Stop workflow if any command fails
+
+          # Clone HF Space
+          git clone https://$HF_TOKEN@huggingface.co/spaces/Shahida13/text-summarizer hf_space
+          cd hf_space
+
+          # Remove old files except README.md and .gitattributes
+          find . -maxdepth 1 ! -name "." ! -name "README.md" ! -name ".gitattributes" -exec rm -rf {} +
+
+          # Copy files from GitHub repo to HF Space folder
+          cp -r ../* .
+
+          # Add, commit, and push
+          git add .
+          git commit -m "Deploy from GitHub Actions" || echo "Nothing to commit"
+          git push
+
