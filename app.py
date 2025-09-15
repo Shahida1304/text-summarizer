@@ -30,5 +30,6 @@ iface = gr.Interface(
 
 if __name__ == "__main__":
     # share=True allows public URL on Hugging Face
-    iface.launch(share=True)
+    iface.launch()
   
+
