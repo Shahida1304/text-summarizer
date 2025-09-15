@@ -3,30 +3,29 @@ name: Deploy to Hugging Face Space
 on:
   push:
     branches:
-      - main   # Workflow triggers on push to main branch
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest       # Use latest Ubuntu runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3   # Pull repo files to runner
+        uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"    # Install Python 3.11
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt huggingface_hub
-          # Install packages from requirements and huggingface_hub for deployment
 
       - name: Deploy to HF Space
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # Hugging Face token stored in GitHub Secrets
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python - <<EOF
           import os, shutil
@@ -41,6 +40,15 @@ jobs:
 
           # Clone HF Space
           repo = Repository(local_dir=LOCAL_DIR, clone_from=REPO_URL, use_auth_token=os.environ["HF_TOKEN"])
+
+          # Remove all old files except README.md and .gitattributes
+          for f in os.listdir(LOCAL_DIR):
+              if f not in ["README.md", ".gitattributes"]:
+                  path = os.path.join(LOCAL_DIR, f)
+                  if os.path.isdir(path):
+                      shutil.rmtree(path)
+                  else:
+                      os.remove(path)
 
           # Copy all files from GitHub repo to HF Space folder
           for item in os.listdir("."):
